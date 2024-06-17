@@ -5,8 +5,8 @@ import numpy as np
 
 from lib.displayer import displayer
 from lib.utils import mat_distance
-from lib.CAModel import CAModel
-from lib.utils_vis import to_rgb, make_seed
+from model.CAModel import CAModel
+from utils.visualize import to_rgb, make_seed
 
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
@@ -15,7 +15,7 @@ pix_size = 8
 _map_shape = (72,72)
 CHANNEL_N = 16
 CELL_FIRE_RATE = 0.5
-model_path = "models/remaster_1.pth"
+model_path = "model/checkpoints/remaster_1.pth"
 device = torch.device("cpu")
 
 _rows = np.arange(_map_shape[0]).repeat(_map_shape[1]).reshape([_map_shape[0],_map_shape[1]])
