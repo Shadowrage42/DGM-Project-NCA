@@ -15,6 +15,8 @@ from IPython.display import clear_output
 from model.CAModel import CAModel
 from lib.utils_vis import SamplePool, get_living_mask, make_seed, make_circle_masks
 from utils.visualize import plot_loss, visualize_batch, to_alpha, to_rgb
+from medmnist import DermaMNIST
+from medmnist.info import INFO
 
 
 USE_WANDB = False
@@ -43,10 +45,23 @@ EXPERIMENT_N = EXPERIMENT_MAP[EXPERIMENT_TYPE]
 
 USE_PATTERN_POOL = [0, 1, 1][EXPERIMENT_N]
 DAMAGE_N = [0, 0, 3][EXPERIMENT_N]  # Number of patterns to damage in a batch
+DERMAMNIST_CLASSES = INFO["dermamnist"]["label"]
 
-target_img = load_emoji(TARGET_EMOJI)
+def load_dermaMNIST(split, download, as_rgb, size):
+    train_mnist_dataset = DermaMNIST(split="train", download=True, as_rgb=True, size=28)
+    return train_mnist_dataset
+dermaMnist_dataset = load_dermaMNIST(split="train", download=True, as_rgb=True, size=28)
+
+
+melanoma_samples = []
+for i, sample in enumerate(dermaMnist_dataset):
+    if sample[1][0] == 4:
+        melanoma_samples.append(sample[0])
+print(len(melanoma_samples))
+
+target_img = melanoma_samples[0]
 plt.figure(figsize=(4,4))
-plt.imshow(to_rgb(target_img))
+plt.imshow(target_img)
 plt.show()
 
 
