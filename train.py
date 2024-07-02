@@ -18,6 +18,7 @@ from utils.visualize import plot_loss, visualize_batch, to_alpha, to_rgb
 from medmnist import DermaMNIST
 from medmnist.info import INFO
 
+from torch.utils.data import DataLoader
 
 USE_WANDB = False
 
@@ -57,20 +58,22 @@ for i, sample in enumerate(dermaMnist_dataset):
     if sample[1][0] == 4:
         img_rgba = sample[0].convert("RGBA")
         melanoma_samples.append(np.array(img_rgba, dtype=np.float32))
-        melanoma_samples.append(sample[0])
 print(f"dataset length {len(melanoma_samples)}")
 
-target_img = melanoma_samples[0]
+target_img = melanoma_samples
+
 # plt.figure(figsize=(4,4))
 # plt.imshow(target_img)
 # plt.show()
 
 
 p = TARGET_PADDING
-pad_target = np.pad(target_img, [(p, p), (p, p), (0, 0)])
-h, w = pad_target.shape[:2]
-pad_target = np.expand_dims(pad_target, axis=0)
+pad_target = np.pad(target_img, [(0,0), (p, p), (p, p), (0, 0)])
+h, w = pad_target.shape[1:3]
+# pad_target = np.expand_dims(pad_target, axis=0)
 pad_target = torch.from_numpy(pad_target.astype(np.float32)).to(device)
+
+train_dataloader = DataLoader(pad_target, batch_size=BATCH_SIZE, shuffle=True)
 
 seed = make_seed((h, w), CHANNEL_N)
 pool = SamplePool(x=np.repeat(seed[None, ...], POOL_SIZE, 0))
