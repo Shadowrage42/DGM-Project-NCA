@@ -57,7 +57,7 @@ melanoma_samples = []
 for i, sample in enumerate(dermaMnist_dataset):
     if sample[1][0] == 4:
         img_rgba = sample[0].convert("RGBA")
-        melanoma_samples.append(np.array(img_rgba, dtype=np.float32))
+        melanoma_samples.append(np.array(img_rgba, dtype=np.float32) / 255)
 print(f"dataset length {len(melanoma_samples)}")
 
 target_img = melanoma_samples
@@ -109,30 +109,31 @@ def loss_f(x, target):
     return torch.mean(torch.pow(x[..., :4]-target, 2), [-2,-3,-1])
 
 for i in range(n_epoch+1):
-    if USE_PATTERN_POOL:
-        batch = pool.sample(BATCH_SIZE)
-        x0 = torch.from_numpy(batch.x.astype(np.float32)).to(device)
-        loss_rank = loss_f(x0, pad_target).detach().cpu().numpy().argsort()[::-1]
-        x0 = batch.x[loss_rank]
-        x0[:1] = seed
+    for pad_target in train_dataloader:
+        if USE_PATTERN_POOL:
+            batch = pool.sample(pad_target.shape[0])
+            x0 = torch.from_numpy(batch.x.astype(np.float32)).to(device)
+            loss_rank = loss_f(x0, pad_target).detach().cpu().numpy().argsort()[::-1]
+            x0 = batch.x[loss_rank]
+            x0[:1] = seed
 
-    else:
-        x0 = np.repeat(seed[None, ...], BATCH_SIZE, 0)
-    x0 = torch.from_numpy(x0.astype(np.float32)).to(device)
+        else:
+            x0 = np.repeat(seed[None, ...], BATCH_SIZE, 0)
+        x0 = torch.from_numpy(x0.astype(np.float32)).to(device)
 
-    x, loss = train(x0, pad_target, np.random.randint(64,96), optimizer, scheduler)
+        x, loss = train(x0, pad_target, np.random.randint(64,96), optimizer, scheduler)
 
-    if USE_WANDB:
-        wandb.log({'model_loss': loss.item()})
+        if USE_WANDB:
+            wandb.log({'model_loss': loss.item()})
+        
+        if USE_PATTERN_POOL:
+            batch.x[:] = x.detach().cpu().numpy()
+            batch.commit()
+
+        step_i = len(loss_log)
+        loss_log.append(loss.item())
     
-    if USE_PATTERN_POOL:
-        batch.x[:] = x.detach().cpu().numpy()
-        batch.commit()
-
-    step_i = len(loss_log)
-    loss_log.append(loss.item())
-    
-    if step_i%100 == 0:
+    if True:  # step_i%100 == 0:
         # clear_output()
         print(step_i, "loss =", loss.item())
         # visualize_batch(x0.detach().cpu().numpy(), x.detach().cpu().numpy())
