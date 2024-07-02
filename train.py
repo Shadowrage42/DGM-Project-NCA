@@ -39,12 +39,11 @@ CELL_FIRE_RATE = 0.5
 
 TARGET_EMOJI = 0 #@param "🦎"
 
-EXPERIMENT_TYPE = "Regenerating"
+EXPERIMENT_TYPE = "Persistent"
 EXPERIMENT_MAP = {"Growing":0, "Persistent":1, "Regenerating":2}
 EXPERIMENT_N = EXPERIMENT_MAP[EXPERIMENT_TYPE]
 
 USE_PATTERN_POOL = [0, 1, 1][EXPERIMENT_N]
-DAMAGE_N = [0, 0, 3][EXPERIMENT_N]  # Number of patterns to damage in a batch
 DERMAMNIST_CLASSES = INFO["dermamnist"]["label"]
 
 def load_dermaMNIST(split, download, as_rgb, size):
@@ -56,13 +55,15 @@ dermaMnist_dataset = load_dermaMNIST(split="train", download=True, as_rgb=True, 
 melanoma_samples = []
 for i, sample in enumerate(dermaMnist_dataset):
     if sample[1][0] == 4:
+        img_rgba = sample[0].convert("RGBA")
+        melanoma_samples.append(np.array(img_rgba, dtype=np.float32))
         melanoma_samples.append(sample[0])
-print(len(melanoma_samples))
+print(f"dataset length {len(melanoma_samples)}")
 
 target_img = melanoma_samples[0]
-plt.figure(figsize=(4,4))
-plt.imshow(target_img)
-plt.show()
+# plt.figure(figsize=(4,4))
+# plt.imshow(target_img)
+# plt.show()
 
 
 p = TARGET_PADDING
@@ -76,7 +77,7 @@ pool = SamplePool(x=np.repeat(seed[None, ...], POOL_SIZE, 0))
 batch = pool.sample(BATCH_SIZE).x
 
 ca = CAModel(CHANNEL_N, CELL_FIRE_RATE, device).to(device)
-ca.load_state_dict(torch.load(model_path))
+ca.load_state_dict(torch.load(model_path, map_location=device))
 
 optimizer = optim.Adam(ca.parameters(), lr=lr, betas=betas)
 scheduler = optim.lr_scheduler.ExponentialLR(optimizer, lr_gamma)
@@ -111,9 +112,7 @@ for i in range(n_epoch+1):
         loss_rank = loss_f(x0, pad_target).detach().cpu().numpy().argsort()[::-1]
         x0 = batch.x[loss_rank]
         x0[:1] = seed
-        if DAMAGE_N:
-            damage = 1.0-make_circle_masks(DAMAGE_N, h, w)[..., None]
-            x0[-DAMAGE_N:] *= damage
+
     else:
         x0 = np.repeat(seed[None, ...], BATCH_SIZE, 0)
     x0 = torch.from_numpy(x0.astype(np.float32)).to(device)
